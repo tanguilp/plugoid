@@ -1,0 +1,53 @@
+<html>
+  <head>
+    <title>Restoring session...</title>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var requestDataRaw = sessionStorage.getItem('plugoid_request_data');
+        sessionStorage.removeItem('plugoid_request_data');
+
+        if (requestDataRaw) {
+          requestData = JSON.parse(requestDataRaw);
+
+          var initialURL = window.location.href.split('?')[0] + '?' + requestData.query_params;
+
+          if (requestData.query_params == '') {
+            initialURL += 'restored'
+          } else {
+            initialURL += '&restored'
+          }
+
+          if (requestData.method == 'GET') {
+            window.location.replace(initialURL);
+          } else if (requestData.method == 'POST') {
+            form = document.getElementById('form');
+
+            form.setAttribute('action', initialURL);
+
+            for (var key in requestData.body_params) {
+              var input = document.createElement("input");
+              input.setAttribute("type", "hidden");
+              input.setAttribute("name", key);
+              input.setAttribute("value", requestData.body_params[key]);
+              form.appendChild(input);
+            }
+
+            form.submit();
+          } else {
+            console.error(
+              'Plugoid: unsupported initial request method (', requestData.method, ')'
+            );
+
+            window.location.replace(initialURL);
+          }
+        }
+        else {
+        }
+      }, false);
+    </script>
+  </head>
+  <body>
+    <form id="form" method="post">
+    </form>
+  </body>
+</html>

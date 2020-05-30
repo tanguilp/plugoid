@@ -1,0 +1,13 @@
+<html>
+  <head>
+    <title>Redirecting...</title>
+    <script>
+      sessionStorage.setItem('plugoid_request_data', '<%= request_data(@conn) %>');
+
+      window.location.replace('<%= Phoenix.HTML.raw(@op_request_uri) %>');
+    </script>
+  </head>
+  <body>
+    <p>Redirecting...</p>
+  </body>
+</html>
