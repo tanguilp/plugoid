@@ -29,7 +29,7 @@ end
 ## Documentation
 
 - Full documentation on [hex.pm](https://hexdocs.pm/plugoid/)
-- [Quick start guide](https://hexdocs.pm/plugoid/doc/quickstart.html)
+- [Quick start guide](https://hexdocs.pm/plugoid/0.1.0/quickstart.html)
 - [`plugoid_demo`](https://github.com/tanguilp/plugoid_demo): a demo application using `Plugoid`
 
 ## Installation
