@@ -380,9 +380,9 @@ defmodule Plugoid do
     |> Keyword.put_new(:on_unauthenticated, :auth)
     |> Keyword.put_new(:on_unauthorized, :auth)
     |> Keyword.put_new(:preserve_initial_request, false)
-    |> Keyword.put_new(:redirect_uri_callback, &redirect_uri/2)
-    |> Keyword.put_new(:response_mode_callback, &response_mode/2)
-    |> Keyword.put_new(:response_type_callback, &response_type/2)
+    |> Keyword.put_new(:redirect_uri_callback, &__MODULE__.redirect_uri/2)
+    |> Keyword.put_new(:response_mode_callback, &__MODULE__.response_mode/2)
+    |> Keyword.put_new(:response_type_callback, &__MODULE__.response_type/2)
     |> Keyword.put_new(:session_lifetime, 3600)
   end
 
@@ -590,8 +590,9 @@ defmodule Plugoid do
   #- `"code"`: forces client authentication that can be considered an additional
   #layer of security (when simply redirecting to an URI is not trusted)
   #- or the first supported response type set in the OP metadata
+  @doc false
   @spec response_type(Plug.Conn.t(), opts()) :: String.t()
-  defp response_type(_conn, opts) do
+  def response_type(_conn, opts) do
     response_types_supported = Utils.server_metadata(opts)["response_types_supported"] ||
       raise "Unable to retrieve `response_types_supported` from server metadata or configuration"
     response_modes_supported = Utils.server_metadata(opts)["response_modes_supported"] || []
@@ -611,8 +612,9 @@ defmodule Plugoid do
   #Returns the response mode from the options
   #In the implicit and hybrid flows, returns `"form_post"` if supported by the server, `"query"`
   #otherwise. In the code flow, returns `nil` (the default used by the server is `"query"`).
+  @doc false
   @spec response_mode(Plug.Conn.t(), opts()) :: String.t() | nil
-  defp response_mode(conn, opts) do
+  def response_mode(conn, opts) do
     response_type = opts[:response_type] || response_type(conn, opts)
     response_modes_supported = Utils.server_metadata(opts)["response_modes_supported"] || []
 
@@ -625,8 +627,9 @@ defmodule Plugoid do
     end
   end
 
+  @doc false
   @spec redirect_uri(Plug.Conn.t(), opts()) :: String.t()
-  defp redirect_uri(conn, _opts) do
+  def redirect_uri(conn, _opts) do
     router = Phoenix.Controller.router_module(conn)
 
     apply(
