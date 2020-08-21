@@ -74,10 +74,14 @@ defmodule Plugoid do
   `"select_account"`)
   - `:prompt_callback`: a `t:opt_callback/0` that dynamically returns the prompt parameter.
   Called only if `:prompt` is not set
-  - `:redirect_uri`: the redirect URI the OP has to use for redirect. If not set, defaults
-  to `Myapp.Router.Helpers.openid_connect_redirect_uri(Myapp.Endpoint, :call)` which
-  asumes that such a route was installed. See also `Plugoid.RedirectURI` for automatic
-  installation of this route
+  - `:redirect_uri`: the redirect URI the OP has to use for redirect. If not set,
+  defaults to
+  `Myapp.Router.Helpers.openid_connect_redirect_uri(Myapp.Endpoint, :call)?iss=<ISS>`
+  where `<ISS>` is replaced by the URL-encoded issuer. This scheme is used to prevent
+  mix-up attacks (see the [Security considerations](#module-security-considerations)).
+  It asumes that such a route was installed. See also `Plugoid.RedirectURI` for automatic
+  installation of this route and the available
+  [helpers](Plugoid.RedirectURI.html#module-determining-the-redirect-uri).
   - `:response_mode`: one of:
     - `"query"`
     - `"fragment"`
@@ -324,6 +328,20 @@ defmodule Plugoid do
   ```elixir
   config :phoenix, :filter_parameters, ["id_token", "code", "token"]
   ```
+
+  ### Preventing mix-up attacks
+
+  Mix-up attacks consists in using the fact that OpenID Connect responses on the
+  redirect URI are not authenticated, and can therefore originate from anyone. An
+  malicious OP can trick an OpenID Connect RP by convincing it to send him tokens
+  received from another OP. This can happen only when more than one OP is used.
+
+  For further discussion, see
+  [Mix-Up, Revisited](https://danielfett.de/2020/05/04/mix-up-revisited/).
+
+  `Plugoid` is immune to such an attack because it adds the issuer to the redirect URI.
+  Beware, however, if you manually change the redirect URI using the
+  `:redirect_uri_callback` option.
 
   """
 
@@ -628,15 +646,18 @@ defmodule Plugoid do
   end
 
   @doc false
-  @spec redirect_uri(Plug.Conn.t(), opts()) :: String.t()
-  def redirect_uri(conn, _opts) do
+  @spec redirect_uri(Plug.Conn.t() | module(), opts()) :: String.t()
+  def redirect_uri(%Plug.Conn{} = conn, opts) do
     router = Phoenix.Controller.router_module(conn)
 
-    apply(
-      Module.concat(router, Helpers),
-      :openid_connect_redirect_uri_url,
-      [Phoenix.Controller.endpoint_module(conn), :call]
-    )
+    base_redirect_uri =
+      apply(
+        Module.concat(router, Helpers),
+        :openid_connect_redirect_uri_url,
+        [Phoenix.Controller.endpoint_module(conn), :call]
+      )
+
+    base_redirect_uri <> "?iss=" <> URI.encode(opts[:issuer])
   end
 
   @doc """

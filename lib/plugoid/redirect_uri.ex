@@ -13,6 +13,21 @@ defmodule Plugoid.RedirectURI do
 
   installs a route to `/openid_connect_redirect_uri` in a Phoenix router.
 
+  ## Determining the redirect URI
+
+  When using `Plugoid.RedirectURI`, an `plugoid_redirect_uri/2` function is automatically
+  installed in the router. It takes the endpoint as the first parameter and the issuer
+  as the second:
+
+      iex> PlugoidDemoWeb.Router.plugoid_redirect_uri(PlugoidDemoWeb.Endpoint, "https://issuer.example.com/auth")
+      "http://localhost:4000/openid_connect_redirect_uri?iss=https://issuer.example.com/auth"
+
+  It can be called without the endpoint, in which case it is inferred from the router's
+  module name:
+
+      iex> PlugoidDemoWeb.Router.plugoid_redirect_uri("https://issuer.example.com/auth")
+      "http://localhost:4000/openid_connect_redirect_uri?iss=https://issuer.example.com/auth"
+
   ## Options
 
   - `:error_view`: the error view to be called in case of error. The `:"500"` template is
@@ -23,6 +38,8 @@ defmodule Plugoid.RedirectURI do
   Token against replay attack when a nonce is used (in the implicit and hybrid flows).
   See also [`JTIRegister`](https://github.com/tanguilp/jti_register)
   - `:path`: the path of the redirect URI. Defaults to `"openid_connect_redirect_uri"`
+  - `:token_callback`: a `t:token_callback/0` function to which are passed the received
+  tokens, for further use (for example, to store a refresh token)
 
   Options of `t:OIDC.Auth.verify_opts/0` which will be passed to `OIDC.Auth.verify_response/3`.
   """
@@ -59,6 +76,28 @@ defmodule Plugoid.RedirectURI do
 
   defmacro __using__(opts) do
     quote do
+      def plugoid_redirect_uri(endpoint \\ nil, issuer) do
+        endpoint =
+          if endpoint do
+            endpoint
+          else
+            Module.split(__MODULE__)
+            |> List.pop_at(-1)
+            |> elem(1)
+            |> Kernel.++([Endpoint])
+            |> Module.safe_concat()
+          end
+
+        base_redirect_uri =
+          apply(
+            Module.concat(__MODULE__, Helpers),
+            :openid_connect_redirect_uri_url,
+            [endpoint, :call]
+          )
+
+        base_redirect_uri <> "?iss=" <> URI.encode(issuer)
+      end
+
       pipeline :oidc_redirect_pipeline do
         plug :accepts, ["html"]
         plug :fetch_query_params
