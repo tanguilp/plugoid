@@ -63,3 +63,17 @@ If another type of credential was provided, refer to `TeslaOAuth2ClientAuth` doc
 
 In production environment, it is unsafe to hardcode application password in an Elixir module.
 Use `Application.fetch_env!/2` or another secure mean instead.
+
+## Step 5: get the redirect URI for the OpenID Provider
+
+Open an IEx shell and type the following command:
+
+
+```elixir
+iex> MyAppWeb.Router.plugoid_redirect_uri("https://openid-provider.com")
+"https://my_app_url.com/openid_connect_redirect_uri?iss=https://openid-provider.com"
+```
+
+where `https://openid-provider.com` is the `issuer` value of the OpenID Provider.
+
+The returned value is the redirect URI of your site to be configured at the OpenID Provider.

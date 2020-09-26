@@ -5,13 +5,13 @@ defmodule Plugoid.MixProject do
     [
       app: :plugoid,
       description: "OpenID Connect Plug for Phoenix",
-      version: "0.3.0",
+      version: "0.4.0",
       elixir: "~> 1.9",
       compilers: [:phoenix] ++ Mix.compilers,
       start_permanent: Mix.env() == :prod,
       docs: [
         main: "readme",
-        extras: ["README.md", "QUICKSTART.md"]
+        extras: ["README.md", "QUICKSTART.md", "CHANGELOG.md"]
       ],
       deps: deps(),
       package: package(),
