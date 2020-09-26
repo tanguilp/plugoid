@@ -51,6 +51,7 @@ defmodule Plugoid.RedirectURI do
     OPResponseSuccess
   }
   alias Plugoid.{
+    OIDCRequest,
     Session.AuthSession,
     Session.StateSession,
     Utils
@@ -72,6 +73,10 @@ defmodule Plugoid.RedirectURI do
 
   defmodule MissingStateParamaterError do
     defexception message: "state parameter is missing from OP's response"
+  end
+
+  defmodule MissingRedirectQueryParamError do
+    defexception message: "a query param of the requested redirect URI is missing in the response"
   end
 
   defmacro __using__(opts) do
@@ -126,7 +131,8 @@ defmodule Plugoid.RedirectURI do
 
     with {:ok, op_response} <- extract_params(conn),
          %{"state" => state} = op_response,
-         {:ok, {conn, request}} <- StateSession.get_and_delete_oidc_request(conn, state)
+         {:ok, {conn, request}} <- StateSession.get_and_delete_oidc_request(conn, state),
+         :ok <- verify_redirect_uri_query_params(conn, request)
     do
       case OIDC.Auth.verify_response(op_response, request.challenge, opts) do
         {:ok, %OPResponseSuccess{} = response} ->
@@ -173,6 +179,23 @@ defmodule Plugoid.RedirectURI do
 
       %{} ->
         {:error, %MissingStateParamaterError{}}
+    end
+  end
+
+  @spec verify_redirect_uri_query_params(
+    Plug.Conn.t(), OIDCRequest.t()
+  ) :: :ok | {:error, Exception.t()}
+  defp verify_redirect_uri_query_params(conn, oidc_request) do
+    req_query_params =
+      URI.parse(oidc_request.challenge.redirect_uri).query
+      |> URI.decode_query()
+      |> MapSet.new()
+    resp_query_params = conn.query_params |> MapSet.new()
+
+    if MapSet.subset?(req_query_params, resp_query_params) do
+      :ok
+    else
+      {:error, %MissingRedirectQueryParamError{}}
     end
   end
 

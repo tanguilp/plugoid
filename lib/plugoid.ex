@@ -339,7 +339,10 @@ defmodule Plugoid do
   For further discussion, see
   [Mix-Up, Revisited](https://danielfett.de/2020/05/04/mix-up-revisited/).
 
-  `Plugoid` is immune to such an attack because it adds the issuer to the redirect URI.
+  `Plugoid` is immune to such an attack because it adds the issuer to the redirect URI
+  as a query parameter and verifies that all request query parameters exist in
+  the response from the OP.
+
   Beware, however, if you manually change the redirect URI using the
   `:redirect_uri_callback` option.
 
