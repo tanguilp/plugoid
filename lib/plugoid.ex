@@ -102,8 +102,8 @@ defmodule Plugoid do
   - `:scope`: a list of scopes (`[String.t()]`) to be requested. The `"openid"` scope
   is automatically requested. The `"offline_access"` scope is to be added here if one
   wants OAuth2 tokens to remain active after the user's logout from the OP
-  - `:server_metadata`: a `t:OIDC.server_metadata()` of server metadata that will take precedence
-  over those of the issuer (published on the `"issuer/.well-known/openid-configuration"` URI).
+  - `:server_metadata`: a `t:OIDC.server_metadata/0` of server metadata that will take precedence
+  over those of the issuer (published on the `"https://issuer/.well-known/openid-configuration"` URI).
   Useful to override one or more server metadata fields
   - `ui_locales`: a list of UI locales
   - `:use_nonce`: one of:
@@ -382,6 +382,7 @@ defmodule Plugoid do
   | {:redirect_uri_callback, opt_callback()}
   | {:response_mode_callback, opt_callback()}
   | {:response_type_callback, opt_callback()}
+  | {:server_metadata, OIDC.server_metadata()}
   | {:session_lifetime, non_neg_integer()}
 
   @type opt_callback :: (Plug.Conn.t(), opts() -> any())

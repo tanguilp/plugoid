@@ -3,26 +3,13 @@ defmodule Plugoid.Utils do
 
   @spec server_metadata(Plugoid.opts()) :: %{optional(String.t()) => any()}
   def server_metadata(opts) do
-    local_server_metadata =
-      [
-        :authorization_endpoint,
-        :jwks,
-        :jwks_uri,
-        :response_modes_supported,
-        :response_types_supported,
-        :token_endpoint
-      ]
-      |> Enum.reduce(%{}, fn opt, acc -> Map.put(acc, to_string(opt), opts[opt]) end)
-      |> Enum.filter(fn {_k, v} -> v != nil end)
-      |> Enum.into(%{})
-
     Oauth2MetadataUpdater.get_metadata(opts[:issuer], opts[:oauth2_metadata_updater_opts] || [])
     |> case do
       {:ok, loaded_server_metadata} ->
-        Map.merge(loaded_server_metadata, local_server_metadata)
+        Map.merge(loaded_server_metadata, opts[:server_metadata] || %{})
 
       {:error, _} ->
-        local_server_metadata
+        opts[:server_metadata] || %{}
     end
   end
 
