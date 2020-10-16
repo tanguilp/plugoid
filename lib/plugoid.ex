@@ -99,6 +99,10 @@ defmodule Plugoid do
   for the request. Called only if `:response_type` is not set
   - `:session_lifetime`: the local session duration in seconds. After this time interval, the
   user is considered unauthenticated and is redirected again to the OP. Defaults to `3600`
+  - `:session_management`: a boolean indicating if session management is enabled.
+  Defaults to `true`, but still depends on:
+    - support of the OP (advertised by the `"check_session_iframe"` metadata field)
+    - use of `use Plugoid.Logout`. See `Plugoid.Logout` for more information
   - `:scope`: a list of scopes (`[String.t()]`) to be requested. The `"openid"` scope
   is automatically requested. The `"offline_access"` scope is to be added here if one
   wants OAuth2 tokens to remain active after the user's logout from the OP
@@ -358,6 +362,7 @@ defmodule Plugoid do
 
   alias OIDC.Auth.OPResponseError
   alias Plugoid.{
+    Logout,
     OIDCRequest,
     Session.AuthSession,
     Session.StateSession,
@@ -384,6 +389,7 @@ defmodule Plugoid do
   | {:response_type_callback, opt_callback()}
   | {:server_metadata, OIDC.server_metadata()}
   | {:session_lifetime, non_neg_integer()}
+  | {:session_management, boolean()}
 
   @type opt_callback :: (Plug.Conn.t(), opts() -> any())
 
@@ -406,6 +412,7 @@ defmodule Plugoid do
     |> Keyword.put_new(:response_mode_callback, &__MODULE__.response_mode/2)
     |> Keyword.put_new(:response_type_callback, &__MODULE__.response_type/2)
     |> Keyword.put_new(:session_lifetime, 3600)
+    |> Keyword.put_new(:session_management, true)
   end
 
   @impl Plug
@@ -453,6 +460,7 @@ defmodule Plugoid do
     cond do
       authenticated and authorized ->
         conn
+        |> Logout.SessionManagement.handle_authenticated_session(opts)
 
       not authenticated and not redirected and on_unauthenticated == :auth ->
         authenticate(conn, opts)
