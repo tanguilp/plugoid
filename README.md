@@ -37,7 +37,7 @@ end
 ```elixir
 def deps do
   [
-    {:plugoid, "~> 0.3.0"}
+    {:plugoid, "~> 0.4.1"}
   ]
 end
 ```
