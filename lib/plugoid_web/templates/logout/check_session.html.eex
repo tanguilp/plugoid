@@ -1,0 +1,43 @@
+<html>
+  <head>
+    <script>
+      var issuer = '<%= issuer(@conn) %>';
+      var client_id = '<%= client_id(@conn) %>';
+      var target_origin = '<%= target_origin(@conn) %>';
+      var session_state = 'FIXME';
+
+      var stat = "unchanged";
+      var mes = client_id + " " + session_state;
+      var opFrameId = "plugoid_session_management_iframe_op_" + issuer;
+      var timerID;
+
+      function check_session()   {
+        var win = window.parent.frames[opFrameId].contentWindow
+        win.postMessage(mes, target_origin);
+      }
+
+      function setTimer() {
+        check_session();
+        timerID = setInterval(check_session, 5 * 1000);
+      }
+
+      window.addEventListener("message", receiveMessage, false);
+
+      function receiveMessage(e) {
+        if (e.origin !== targetOrigin) {
+          return;
+        }
+        stat = e.data;
+
+        if (stat === "changed") {
+          clearInterval(timerID);
+          // then take the actions below...
+        }
+      }
+
+      setTimer();
+    </script>
+  </head>
+  <body>
+  </body>
+</html>
