@@ -285,15 +285,7 @@ defmodule Plugoid do
 
   ## Logout
 
-  Plugoid does not support OpenID Connect logout. However, the functions:
-  - `Plugoid.logout/1`
-  - `Plugoid.logout/2`
-
-  allow loging out a user **locally** by removing authenticated session data or the whole
-  authentication cookie and session.
-
-  Note that, however, the user will be redirected again to the OP (and might be seamlessly
-  authenticated, if his session is active on the OP) when reaching a path protected by Plugoid.
+  See `Plugoid.Logout`.
 
   ## Error handling
 
@@ -486,7 +478,7 @@ defmodule Plugoid do
         if now_monotonic < auth_session_info.auth_time_monotonic + opts[:session_lifetime] do
           conn
           |> Plug.Conn.put_private(:plugoid_authenticated, true)
-          |> Plug.Conn.put_private(:plugoid_auth_iss, opts[:issuer])
+          |> Plug.Conn.put_private(:plugoid_opts, opts)
           |> Plug.Conn.put_private(:plugoid_auth_sub, auth_session_info.sub)
         else
           Plug.Conn.put_private(conn, :plugoid_authenticated, false)
@@ -675,7 +667,7 @@ defmodule Plugoid do
   the user is unauthenticated
   """
   @spec issuer(Plug.Conn.t()) :: String.t() | nil
-  def issuer(conn), do: conn.private[:plugoid_auth_iss]
+  def issuer(conn), do: conn.private[:plugoid_opts][:issuer]
 
   @doc """
   Returns the subject (OP's "user id") of current authenticated user, or `nil` if
@@ -704,22 +696,6 @@ defmodule Plugoid do
         false
     end
   end
-
-  @doc """
-  Logs out a user from an issuer
-
-  The connection should be eventually sent to have the cookie updated
-  """
-  @spec logout(Plug.Conn.t(), OIDC.issuer()) :: Plug.Conn.t()
-  def logout(conn, issuer), do: AuthSession.set_unauthenticated(conn, issuer)
-
-  @doc """
-  Logs out a user from all issuers
-
-  The connection should be eventually sent to have the cookie unset
-  """
-  @spec logout(Plug.Conn.t()) :: Plug.Conn.t()
-  def logout(conn), do: AuthSession.destroy(conn)
 
   @spec error_view(Plug.Conn.t(), opts()) :: module()
   defp error_view(conn, opts) do
