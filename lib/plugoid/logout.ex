@@ -56,11 +56,13 @@ defmodule Plugoid.Logout do
         conn
         |> local_logout()
         |> Phoenix.Controller.redirect(external: post_logout_redirect_uri)
+        |> Plug.Conn.halt()
 
       nil ->
         conn
         |> local_logout()
         |> Phoenix.Controller.redirect(to: "/")
+        |> Plug.Conn.halt()
     end
   end
 
@@ -78,7 +80,7 @@ defmodule Plugoid.Logout do
   `local_logout_all/1` instead.
   """
   @spec local_logout(Plug.Conn.t()) :: Plug.Conn.t()
-  def local_logout(%Plug.Conn{private: %{plugoid_auth_iss: issuer}} = conn),
+  def local_logout(%Plug.Conn{private: %{plugoid_auth_sub: issuer}} = conn),
     do: AuthSession.set_unauthenticated(conn, issuer)
   def local_logout(%Plug.Conn{} = conn), do: conn
 
@@ -91,9 +93,12 @@ defmodule Plugoid.Logout do
   def local_logout_all(%Plug.Conn{} = conn), do: AuthSession.destroy(conn)
 
   @doc """
-  Performs an RP-initiated logout
+  Performs an RP-initiated logout at the OP
 
   If the OP does not support logout, an `Plugoid.Logout.UnsupportedError` exception is raised.
+
+  The session is not deleted locally; instead, the OP is in charge of killing the local
+  session using front-channel logout, back-channel logout or session management.
   """
   @spec rp_initiated_logout(Plug.Conn.t(), logout_opts()) :: Plug.Conn.t()
   def rp_initiated_logout(
@@ -117,6 +122,7 @@ defmodule Plugoid.Logout do
         conn
         |> local_logout()
         |> Phoenix.Controller.redirect(external: end_session_endpoint)
+        |> Plug.Conn.halt()
 
       nil ->
         raise UnsupportedError
