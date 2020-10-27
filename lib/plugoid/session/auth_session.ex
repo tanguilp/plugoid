@@ -8,12 +8,13 @@ defmodule Plugoid.Session.AuthSession do
 
     @enforce_keys [:sub, :auth_time_monotonic]
 
-    defstruct [:sub, :acr, :auth_time_monotonic]
+    defstruct [:sub, :acr, :auth_time_monotonic, :sid]
 
     @type t :: %__MODULE__{
       sub: String.t(),
       acr: String.t() | nil,
-      auth_time_monotonic: integer()
+      auth_time_monotonic: integer(),
+      sid: String.t()
     }
   end
 
@@ -29,7 +30,8 @@ defmodule Plugoid.Session.AuthSession do
     session_info = %Info{
       sub: op_response.id_token_claims["sub"],
       acr: op_response.id_token_claims["acr"],
-      auth_time_monotonic: System.monotonic_time(:second)
+      auth_time_monotonic: System.monotonic_time(:second),
+      sid: op_response.id_token_claims["sid"]
     }
 
     conn = Plug.Conn.fetch_cookies(conn)
