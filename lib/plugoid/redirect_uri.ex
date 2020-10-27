@@ -46,6 +46,8 @@ defmodule Plugoid.RedirectURI do
 
   @behaviour Plug
 
+  require Logger
+
   alias OIDC.Auth.{
     Challenge,
     OPResponseSuccess
@@ -139,16 +141,48 @@ defmodule Plugoid.RedirectURI do
           maybe_register_nonce(response.id_token_claims, opts)
           maybe_execute_token_callback(response, request.challenge, opts)
 
-          conn
-          |> AuthSession.set_authenticated(request.challenge.issuer, response)
-          |> Phoenix.Controller.redirect(to: request.initial_request_path <> "?redirected")
+          conn =
+            conn
+            |> AuthSession.set_authenticated(request.challenge.issuer, response)
+            |> Phoenix.Controller.redirect(to: request.initial_request_path <> "?redirected")
 
-        {:error, error} ->
+          Logger.info(%{
+            what: :plugoid_user_logging,
+            result: :ok,
+            details: %{
+              acr: response.id_token_claims["acr"],
+              amr: response.id_token_claims["amr"],
+              auth_time: response.id_token_claims["auth_time"],
+              iss: response.id_token_claims["iss"],
+              sid: response.id_token_claims["sid"],
+              sub: response.id_token_claims["sub"],
+              granted_scopes: response.granted_scopes
+            }
+          })
+
+          conn
+
+        {:error, e} ->
+          error_type =
+            case e do
+              %OIDC.Auth.OPResponseError{} ->
+                :denied
+
+              _ ->
+                :error
+            end
+
+          Logger.info(%{
+            what: :plugoid_user_logging,
+            result: error_type,
+            details: %{reason: Exception.message(e)}
+          })
+
           # we compress to the maximum to avoid browser URL length limitations
           error_token = Phoenix.Token.sign(
             conn,
             "plugoid error token",
-            :erlang.term_to_binary(error, compressed: 9)
+            :erlang.term_to_binary(e, compressed: 9)
           )
 
           redirect_to = request.initial_request_path <> "?oidc_error=" <> error_token
@@ -157,6 +191,8 @@ defmodule Plugoid.RedirectURI do
       end
     else
       {:error, reason} ->
+        Logger.info(%{what: :plugoid_user_logging, result: :error, details: %{reason: reason}})
+
         conn
         |> Plug.Conn.put_status(:internal_server_error)
         |> Phoenix.Controller.put_view(error_view(conn))

@@ -70,6 +70,8 @@ defmodule Plugoid.Logout do
   is used
   """
 
+  require Logger
+
   alias Plugoid.{Session.AuthSession, Utils}
 
   @type logout_opts :: [logout_opt()]
@@ -182,7 +184,26 @@ defmodule Plugoid.Logout do
   """
   @spec local_logout(Plug.Conn.t()) :: Plug.Conn.t()
   def local_logout(%Plug.Conn{private: %{plugoid_authenticated: true}} = conn) do
-    AuthSession.set_unauthenticated(conn, conn.private.plugoid_opts.issuer)
+    case AuthSession.info(conn, conn.private.plugoid_opts.issuer) do
+      %AuthSession.Info{} = auth_session_info ->
+        conn = AuthSession.set_unauthenticated(conn, conn.private.plugoid_opts.issuer)
+
+        Logger.info(%{
+          what: :plugoid_user_logout,
+          result: :ok,
+          details: %{
+            type: :local,
+            iss: conn.private.plugoid_opts.issuer,
+            sid: auth_session_info.sid,
+            sub: conn.private.plugoid_auth_sub
+          }
+        })
+
+        conn
+
+      _ ->
+        conn
+    end
   end
 
   def local_logout(%Plug.Conn{} = conn) do
@@ -195,7 +216,13 @@ defmodule Plugoid.Logout do
   The Plugoid authentication cookie is unset.
   """
   @spec local_logout_all(Plug.Conn.t()) :: Plug.Conn.t()
-  def local_logout_all(%Plug.Conn{} = conn), do: AuthSession.destroy(conn)
+  def local_logout_all(%Plug.Conn{} = conn) do
+    conn = AuthSession.destroy(conn)
+
+    Logger.info(%{what: :plugoid_user_logout, result: :ok, details: %{type: :local_all}})
+
+    conn
+  end
 
   @doc """
   Performs an RP-initiated logout at the OP
