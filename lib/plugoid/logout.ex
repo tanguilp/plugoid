@@ -80,9 +80,13 @@ defmodule Plugoid.Logout do
   `local_logout_all/1` instead.
   """
   @spec local_logout(Plug.Conn.t()) :: Plug.Conn.t()
-  def local_logout(%Plug.Conn{private: %{plugoid_auth_sub: issuer}} = conn),
-    do: AuthSession.set_unauthenticated(conn, issuer)
-  def local_logout(%Plug.Conn{} = conn), do: conn
+  def local_logout(%Plug.Conn{private: %{plugoid_authenticated: true}} = conn) do
+    AuthSession.set_unauthenticated(conn, conn.private.plugoid_opts.issuer)
+  end
+
+  def local_logout(%Plug.Conn{} = conn) do
+    conn
+  end
 
   @doc """
   Logs out a user from all OPs
