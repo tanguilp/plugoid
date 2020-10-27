@@ -1,13 +1,67 @@
 defmodule Plugoid.Logout do
   @moduledoc """
-  Functions to log out a user
+  User logout functions and plugs
+
+  In OpenID Connect, logout consists in 2 things:
+  - redirecting to the OP to log out the user. This is called RP-initiated logout.
+  Typically, when clicking on a link on the current site, the user is redirected
+  to the OP for deconnection
+  - on the OP, logging out the user from all the site where the user is logged in.
+  This problem is surprisingly hard to solve, and 3 standards have been developped:
+    - Session Management: from an hidden iframe, the site regularly pings the OP
+    to know about the authenticated session status
+    - Frontchannel logout: when disconnecting on the OP, hidden iframes are opened
+    to a specific logout URI on the sites where the user has sessions, ordering them
+    to terminate
+    - Backchannel logout: when disconnecting on the OP, the OP sends HTTP requests
+    to a specific endpoint of sites where the user is logged in
+
+  Plugoid implements RP-initiated logout (see
+  [Logout functions](#module-logout-functions)) and frontchannel logout (see
+  [Installing the logout Plug](#module-installing-the-logout-plug)).
+
+  Session Management is unsupported due to its complexity, and backchannel logout
+  is unsupported because it requires stateful session backend (possibly with some
+  indexing capabilities) and therefore `Plug.Session.COOKIE` could not be
+  supported. This may change in the future.
+
+  ## Installing the logout Plug
+
+      defmodule Myapp.Router do
+        use Plugoid.Logout
+      end
+
+  installs a route to `/openid_connect_logout` in a Phoenix router.
+
+  ### Options
+  - `:path`: the path of the redirect URI. Defaults to `"openid_connect_logout"`
+  - `:frontchannel_logout_session_required`: a boolean indicating if the OP has to
+  provide the issuer and session ID when logging out using frontchannel logout. Defaults
+  to `true`
+
+  ## Determining client metadata
+
+  When using this module, Plugoid automatically installs functions into the router for
+  the following client metadata:
+
+  - `"frontchannel_logout_uri"`:
+
+        iex> MyAppWeb.Router.plugoid_frontchannel_logout_uri()
+        "http://localhost:4000/openid_connect_logout/front_channel"
+
+  - `":frontchannel_logout_session_required"`:
+
+        iex> MyAppWeb.Router.plugoid_frontchannel_logout_session_required()
+        true
+
+  ## Logout functions
 
   The logout functions must be called from a page where the user is already authenticated. To
   check if a user is authenticated, the `Plugoid.authenticated?/1` function can be used.
 
   In doubt, use the `logout/1` function which manages logout depending on the OP's support.
 
-  ## Options
+  ### Options
   - `:id_token_callback`: a function that retrieves an ID token, possibly expired, for a given
   user. When not set, `Plugoid` tries to use the `OAuth2TokenManager` library if installed.
   - `:post_logout_redirect_uri`: the URI to redirect to after logout. Note that it can be
@@ -31,6 +85,54 @@ defmodule Plugoid.Logout do
     """
 
     defexception message: "RP-initiated logout is not supported by the OP"
+  end
+
+  defmacro __using__(opts \\ []) do
+    opts =
+      opts
+      |> Keyword.put_new(:path, "/openid_connect_logout")
+      |> Keyword.put_new(:frontchannel_logout_session_required, true)
+      |> IO.inspect()
+
+    quote do
+      def plugoid_frontchannel_logout_uri(endpoint \\ nil) do
+        endpoint =
+          if endpoint do
+            endpoint
+          else
+            Module.split(__MODULE__)
+            |> List.pop_at(-1)
+            |> elem(1)
+            |> Kernel.++([Endpoint])
+            |> Module.safe_concat()
+          end
+
+        apply(
+          Module.concat(__MODULE__, Helpers),
+          :openid_connect_logout_frontchannel_url,
+          [endpoint, :call]
+        )
+      end
+
+      def plugoid_frontchannel_logout_session_required(),
+        do: unquote(opts)[:frontchannel_logout_session_required]
+
+      pipeline :oidc_logout_pipeline do
+        plug :accepts, ["html"]
+        plug :fetch_query_params
+      end
+
+      scope unquote(opts)[:path], Plugoid.Logout do
+        pipe_through :oidc_logout_pipeline
+
+        get "/front_channel", FrontChannel, :call,
+          as: :openid_connect_logout_frontchannel,
+          private:
+            unquote(opts)
+            |> Keyword.take([:frontchannel_logout_session_required])
+            |> Enum.into(%{})
+      end
+    end
   end
 
   @doc """
