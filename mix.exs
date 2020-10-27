@@ -35,6 +35,7 @@ defmodule Plugoid.MixProject do
       {:jwks_uri_updater, "~> 1.1"},
       {:oauth2_metadata_updater, "~> 1.2"},
       {:oauth2_utils, "~> 0.1"},
+      {:oauth2_token_manager, "~> 0.2.0", only: :dev},
       {:oidc, "~> 0.3"},
       {:phoenix_html, "~> 2.0"},
       {:phoenix, "~> 1.0"}
