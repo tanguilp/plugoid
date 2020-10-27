@@ -92,7 +92,6 @@ defmodule Plugoid.Logout do
       opts
       |> Keyword.put_new(:path, "/openid_connect_logout")
       |> Keyword.put_new(:frontchannel_logout_session_required, true)
-      |> IO.inspect()
 
     quote do
       def plugoid_frontchannel_logout_uri(endpoint \\ nil) do
