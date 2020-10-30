@@ -18,7 +18,7 @@ defmodule Plugoid.Logout.FrontChannel do
           what: :plugoid_user_logout,
           result: :ok,
           details: %{
-            type: :frontchannel,
+            logout_type: :frontchannel,
             iss: issuer,
             sid: sid,
             sub: auth_session_info.sub
@@ -28,6 +28,15 @@ defmodule Plugoid.Logout.FrontChannel do
         conn
 
       _ ->
+        Logger.info(%{
+          what: :plugoid_user_logout,
+          result: :error,
+          details: %{
+            logout_type: :frontchannel,
+            reason: "sid doesn't match a session"
+          }
+        })
+
         conn
     end
     |> Plug.Conn.put_resp_header("cache-control", "no-cache, no-store")
