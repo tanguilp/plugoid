@@ -57,6 +57,8 @@ defmodule Plugoid.Logout do
 
   @default_logout_opts [id_token_callback: &__MODULE__.id_token_callback/2]
 
+  require Logger
+
   alias Plugoid.{Session.AuthSession, Utils}
 
   @typedoc """
@@ -72,7 +74,6 @@ defmodule Plugoid.Logout do
   """
   @type logout_opts :: [logout_opt()]
   @type logout_opt ::
-  #FIXME: subject not in OIDC
   {:id_token_callback, (OIDC.issuer(), OIDC.subject() -> OIDC.IDToken.serialized() | nil)}
   | {:post_logout_redirect_uri, String.t()}
   | {:state, String.t()}
@@ -152,6 +153,9 @@ defmodule Plugoid.Logout do
   is chosen by default) or by the `:post_logout_redirect_uri` option.
 
   If none are configured, the user is redirected to `"/"`.
+
+  The connection **must** be authenticated by Plugoid, otherwise a
+  `Plugoid.Logout.UnauthenticatedConnectionError` exception is raised.
   """
   @spec logout(Plug.Conn.t(), logout_opts) :: Plug.Conn.t()
   def logout(conn, logout_opts \\ @default_logout_opts) do
@@ -185,7 +189,26 @@ defmodule Plugoid.Logout do
   """
   @spec local_logout(Plug.Conn.t(), OIDC.issuer()) :: Plug.Conn.t()
   def local_logout(%Plug.Conn{} = conn, <<_::binary>> = issuer) do
-    AuthSession.set_unauthenticated(conn, issuer)
+    case AuthSession.info(conn, issuer) do
+      %AuthSession.Info{} = auth_session_info ->
+        conn = AuthSession.set_unauthenticated(conn, issuer)
+
+        Logger.info(%{
+          what: :plugoid_user_logout,
+          result: :ok,
+          details: %{
+            logout_type: :local,
+            iss: issuer,
+            sid: auth_session_info.sid,
+            sub: auth_session_info.sub
+          }
+        })
+
+        conn
+
+      _ ->
+        conn
+    end
   end
 
   @doc """
@@ -211,7 +234,17 @@ defmodule Plugoid.Logout do
   The Plugoid authentication cookie is unset.
   """
   @spec local_logout_all(Plug.Conn.t()) :: Plug.Conn.t()
-  def local_logout_all(%Plug.Conn{} = conn), do: AuthSession.destroy(conn)
+  def local_logout_all(%Plug.Conn{} = conn) do
+    conn = AuthSession.destroy(conn)
+
+    Logger.info(%{
+      what: :plugoid_user_logout,
+      result: :ok,
+      details: %{logout_type: :local_all}
+    })
+
+    conn
+  end
 
   @doc """
   Performs an RP-initiated logout at the current OP
@@ -242,10 +275,23 @@ defmodule Plugoid.Logout do
           |> Map.put(:query, URI.encode_query(query_params))
           |> URI.to_string()
 
+        conn =
+          conn
+          |> local_logout()
+          |> Phoenix.Controller.redirect(external: end_session_endpoint)
+          |> Plug.Conn.halt()
+
+        Logger.info(%{
+          what: :plugoid_user_logout,
+          result: :ok,
+          details: %{
+            logout_type: :rp_initiated,
+            iss: conn.private.plugoid_opts[:issuer],
+            sub: conn.private.plugoid_auth_sub
+          }
+        })
+
         conn
-        |> local_logout()
-        |> Phoenix.Controller.redirect(external: end_session_endpoint)
-        |> Plug.Conn.halt()
 
       nil ->
         raise UnsupportedError

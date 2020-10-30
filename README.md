@@ -42,6 +42,11 @@ def deps do
 end
 ```
 
+## Compatibility
+
+OTP21+
+Elixir v1.11+
+
 ## When to use it
 
 Possible uses are:

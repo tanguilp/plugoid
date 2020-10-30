@@ -338,6 +338,104 @@ defmodule Plugoid do
   Beware, however, if you manually change the redirect URI using the
   `:redirect_uri_callback` option.
 
+  ## Logging
+
+  Plugoid uses structured logging (requires Elixir v1.11+ and OTP21+) to log events.
+
+  The format used is documented by the `t:log_message/0` type.
+
+  ### Authentication
+
+  - On success:
+
+        %{
+          details:
+            %{
+              acr: "2-factor",
+              amr: ["otp", "pwd"],
+              auth_time: 1604061908,
+              granted_scopes: ["openid"],
+              iss: "https://repentant-brief-fishingcat.gigalixirapp.com",
+              sid: nil,
+              sub: "xfTID9wi_Ipm_AymKJlF6O5WNPnJ8gmCTbt8D6NWC7k"
+            },
+          result: :ok,
+          what: :plugoid_user_logging
+        }
+
+  - On request denied:
+
+        %{
+          what: :plugoid_user_logging,
+          result: :denied,
+          details: %{error: "error message"}
+        }
+
+  - On request error:
+
+        %{
+          what: :plugoid_user_logging,
+          result: :error,
+          details: %{error: "error message"}
+        }
+
+  ### Logout
+
+  - Local logout:
+
+        %{
+          details:
+            %{
+              iss: "https://repentant-brief-fishingcat.gigalixirapp.com",
+              sid: nil,
+              sub: "xfTID9wi_Ipm_AymKJlF6O5WNPnJ8gmCTbt8D6NWC7k",
+              logout_type: :local
+            },
+          result: :ok,
+          what: :plugoid_user_logout
+        }
+
+  - Local logout of all OPs:
+
+        %{
+          details: %{logout_type: :local_all},
+          result: :ok,
+          what: :plugoid_user_logout
+        }
+
+  - RP-initiated logout redirection
+
+        %{
+          details: %{
+            iss: "https://repentant-brief-fishingcat.gigalixirapp.com",
+            sid: nil,
+            sub: "xfTID9wi_Ipm_AymKJlF6O5WNPnJ8gmCTbt8D6NWC7k",
+            logout_type: :rp_initiated
+          },
+          result: :ok,
+          what: :plugoid_user_logout
+        }
+
+  - Frontchannel logout with issuer and session ID
+
+        %{
+          details: %{
+            iss: "https://repentant-brief-fishingcat.gigalixirapp.com",
+            sid: "fclreiwhxiwweicrgh27cF2c",
+            sub: "xfTID9wi_Ipm_AymKJlF6O5WNPnJ8gmCTbt8D6NWC7k",
+            logout_type: :frontchannel
+          },
+          result: :ok,
+          what: :plugoid_user_logout
+        }
+
+  - Frontchannel logout without issuer and session ID
+
+        %{
+          details: %{logout_type: :frontchannel_all},
+          result: :ok,
+          what: :plugoid_user_logout
+        }
   """
 
   defmodule AuthenticationRequiredError do
@@ -378,6 +476,22 @@ defmodule Plugoid do
   | {:session_lifetime, non_neg_integer()}
 
   @type opt_callback :: (Plug.Conn.t(), opts() -> any())
+
+  @type log_message :: %{
+    what: :plugoid_user_logging | :plugoid_user_logout,
+    result: :ok | :error | :denied,
+    details: %{
+      optional(:acr) => OIDC.acr() | nil,
+      optional(:amr) => [OIDC.amr()],
+      optional(:auth_time) => OIDC.auth_time() | nil,
+      optional(:iss) => OIDC.issuer(),
+      optional(:sid) => OIDC.session_id() | nil,
+      optional(:sub) => OIDC.subject(),
+      optional(:granted_scopes) => [OIDC.scope()],
+      optional(:reason) => any(),
+      optional(:logout_type) => :local | :local_all | :rp_initiated | :frontchannel | :frontchannel_all
+    }
+  }
 
   @implicit_response_types ["id_token", "id_token token"]
   @hybrid_response_types ["code id_token", "code token", "code id_token token"]
