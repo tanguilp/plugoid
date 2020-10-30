@@ -5,7 +5,7 @@ defmodule Plugoid.MixProject do
     [
       app: :plugoid,
       description: "OpenID Connect Plug for Phoenix",
-      version: "0.4.1",
+      version: "0.5.0",
       elixir: "~> 1.11",
       compilers: [:phoenix] ++ Mix.compilers,
       start_permanent: Mix.env() == :prod,

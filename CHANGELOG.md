@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project adheres to Semantic Versioning.
 
+## [0.5.0] - FIXME
+
+### Added
+
+- [`Plugoid.Logout`] RP-initiated logout
+- [`Plugoid.Logout`] Frontchannel logout
+- [`Plugoid.Logout`] Local logout
+- [`Plugoid`] Structured logging
+
+### Removed
+
+- [`Plugoid`] The `Plugoid.logout/1` and `Plugoid.logout/2` functions have been removed
+in favor of functions of the `Plugoid.Logout` module
+
 ## [0.4.1] - 2020-10-16
 
 ### Fixed
