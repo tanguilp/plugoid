@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project adheres to Semantic Versioning.
 
+## [0.4.2] - 2021-09-22
+
+### Fixed
+
+- [`Plugoid`] Fixed a bug with token hash validation in imported library
+
 ## [0.4.1] - 2020-10-16
 
 ### Fixed
