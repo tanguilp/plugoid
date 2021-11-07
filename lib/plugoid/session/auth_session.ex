@@ -6,13 +6,12 @@ defmodule Plugoid.Session.AuthSession do
   defmodule Info do
     @moduledoc false
 
-    @enforce_keys [:sub, :auth_time_monotonic]
+    @enforce_keys [:claims, :auth_time_monotonic]
 
-    defstruct [:sub, :acr, :auth_time_monotonic]
+    defstruct [:claims, :auth_time_monotonic]
 
     @type t :: %__MODULE__{
-      sub: String.t(),
-      acr: String.t() | nil,
+      claims: %{String.t() => String.t()},
       auth_time_monotonic: integer()
     }
   end
@@ -26,9 +25,11 @@ defmodule Plugoid.Session.AuthSession do
   def set_authenticated(conn, issuer, op_response) do
     {cookie_name, cookie_opts, cookie_store, cookie_store_opts} = cookie_config()
 
+    claims_keys = Application.get_env(:plugoid, :claims, ["sub", "acr"])
+    claims = Map.take(op_response.id_token_claims, claims_keys)
+
     session_info = %Info{
-      sub: op_response.id_token_claims["sub"],
-      acr: op_response.id_token_claims["acr"],
+      claims: claims,
       auth_time_monotonic: System.monotonic_time(:second)
     }
 

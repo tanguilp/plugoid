@@ -487,7 +487,7 @@ defmodule Plugoid do
           conn
           |> Plug.Conn.put_private(:plugoid_authenticated, true)
           |> Plug.Conn.put_private(:plugoid_auth_iss, opts[:issuer])
-          |> Plug.Conn.put_private(:plugoid_auth_sub, auth_session_info.sub)
+          |> Plug.Conn.put_private(:plugoid_auth_claims, auth_session_info.claims)
         else
           Plug.Conn.put_private(conn, :plugoid_authenticated, false)
         end
@@ -499,7 +499,8 @@ defmodule Plugoid do
 
   @spec authorized?(Plug.Conn.t(), opts()) :: boolean()
   defp authorized?(%Plug.Conn{private: %{plugoid_authenticated: true}} = conn, opts) do
-    %AuthSession.Info{acr: current_acr} = AuthSession.info(conn, opts[:issuer])
+    %AuthSession.Info{claims: claims} = AuthSession.info(conn, opts[:issuer])
+    current_acr = claims["acr"]
 
     case opts[:claims] do
       %{
@@ -678,11 +679,11 @@ defmodule Plugoid do
   def issuer(conn), do: conn.private[:plugoid_auth_iss]
 
   @doc """
-  Returns the subject (OP's "user id") of current authenticated user, or `nil` if
+  Returns the claims of the current authenticated user, or `nil` if
   the user is unauthenticated
   """
-  @spec subject(Plug.Conn.t()) :: String.t() | nil
-  def subject(conn), do: conn.private[:plugoid_auth_sub]
+  @spec claims(Plug.Conn.t()) :: String.t() | nil
+  def claims(conn), do: conn.private[:plugoid_auth_claims]
 
   @doc """
   Returns `true` if the current request happens after a redirection from the OP, `false`
