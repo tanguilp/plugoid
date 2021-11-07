@@ -44,7 +44,7 @@ of your application) and add the following code:
 
 ```elixir
 defmodule MyApp.ClientCallback do
-  @behaviour OIDC.Auth.ClientConfig
+  @behaviour OIDC.ClientConfig
 
   @impl true
   def get("<client_id>") do
