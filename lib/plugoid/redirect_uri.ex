@@ -39,7 +39,7 @@ defmodule Plugoid.RedirectURI do
   See also [`JTIRegister`](https://github.com/tanguilp/jti_register)
   - `:path`: the path of the redirect URI. Defaults to `"openid_connect_redirect_uri"`
   - `:token_callback`: a `t:token_callback/0` function to which are passed the received
-  tokens, for further use (for example, to store a refresh token)
+  tokens, for further use (for example, to store a refresh token) and returns the `t:Plug.Conn.t/0`
 
   Options of `t:OIDC.Auth.verify_opts/0` which will be passed to `OIDC.Auth.verify_response/3`.
   """
@@ -65,11 +65,12 @@ defmodule Plugoid.RedirectURI do
   | {:token_callback, token_callback()}
 
   @type token_callback :: (
+    Plug.Conn.t(),
     OPResponseSuccess.t(),
     issuer :: String.t(),
     client_id :: String.t(),
     opts()
-    -> any())
+    -> Plug.Conn.t())
 
   defmodule MissingStateParamaterError do
     defexception message: "state parameter is missing from OP's response"
@@ -137,9 +138,9 @@ defmodule Plugoid.RedirectURI do
       case OIDC.Auth.verify_response(op_response, request.challenge, opts) do
         {:ok, %OPResponseSuccess{} = response} ->
           maybe_register_nonce(response.id_token_claims, opts)
-          maybe_execute_token_callback(response, request.challenge, opts)
 
           conn
+          |> maybe_execute_token_callback(response, request.challenge, opts)
           |> AuthSession.set_authenticated(request.challenge.issuer, response)
           |> Phoenix.Controller.redirect(to: request.initial_request_path <> "?redirected")
 
@@ -219,18 +220,22 @@ defmodule Plugoid.RedirectURI do
   end
 
   @spec maybe_execute_token_callback(
+    Plug.Conn.t(),
     OPResponseSuccess.t(),
     Challenge.t(),
     opts()
-  ) :: any()
-  defp maybe_execute_token_callback(response, challenge, opts) do
+  ) :: Plug.Conn.t()
+  defp maybe_execute_token_callback(conn, response, challenge, opts) do
     if opts[:token_callback] do
       opts[:token_callback].(
+        conn,
         response,
         challenge.issuer,
         challenge.client_id,
         opts[:token_callback_opts] || []
       )
+    else
+      conn
     end
   end
 end
