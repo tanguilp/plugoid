@@ -107,7 +107,7 @@ defmodule Plugoid.Session.StateSession do
 
   defp cookie_config() do
     name = Application.get_env(:plugoid, :state_cookie_name, "plugoid_state")
-    opts = Application.get_env(:plugoid, :state_cookie_opts, [extra: "SameSite=None"])
+    opts = Application.get_env(:plugoid, :state_cookie_opts, [secure: true, extra: "SameSite=None"])
     store =
       Application.get_env(:plugoid, :state_cookie_store, :cookie) |> Plug.Session.Store.get()
     store_opts =

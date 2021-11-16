@@ -141,9 +141,9 @@ defmodule Plugoid do
     - `:state_cookie_name`: the base name of the state cookie. Defaults to
     `"plugoid_state"`
     - `:state_cookie_opts`: `opts` arg of `Plug.Conn.put_resp_cookie/4`. Defaults to
-    `[extra: "SameSite=None"]`. `SameSite` is set to `None` because OpenID Connect can redirect
-    with a HTTP post request (`"form_post"` response mode) and cross-domain cookies are not
-    sent except with this setting
+    `[secure: true, extra: "SameSite=None"]`. `SameSite` is set to `None` because OpenID Connect
+    can redirect with a HTTP post request (`"form_post"` response mode) and cross-domain cookies
+    are not sent except with this setting
     - `:state_cookie_store`: a module implementing the `Plug.Session.Store` behaviour.
     Defaults to `:cookie` (which is `Plug.Session.COOKIE`)
     - `:state_cookie_store_opts`: options for the `:state_cookie_store`. Defaults to `[]`
