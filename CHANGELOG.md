@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project adheres to Semantic Versioning.
 
+## [0.5.0] - 2021-11-16
+
+### Changed
+
+- [`Plugoid.Redirect`] **Breaking change** The token callback now takes a `Plug.Conn.t()`
+as an additional parameter and returns it
+
+### Fixed
+
+- [`Plugoid.Session.StateSession`] Set `secure: true` to state session cookie (#14)
+
 ## [0.4.3] - 2021-10-25
 
 ### Fixed
