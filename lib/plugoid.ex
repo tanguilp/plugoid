@@ -183,8 +183,9 @@ defmodule Plugoid do
 
   ## Preserving request parameters
 
-  When set to `true` through the `:preserve_initial_request` option, query and body parameters
-  are replayed when redirected back from the OP.
+  When set to `true` through the `:preserve_initial_request` option, body parameters
+  are replayed when redirected back from the OP. This is useful to avoid losing form
+  data when the user becomes unauthenticated while filling it.
 
   Like for state session, it cannot be stored on server side because it would expose the server
   to DOS attacks (even more, as query and body parameters can be way larger). Therefore,
@@ -201,6 +202,10 @@ defmodule Plugoid do
     request
     - builds an HTML form with initial body parameters and post it to the initial page (with
     query parameters as well) if the initial request was a `POST` request
+
+  The user is always returned to the initial page with the query parameters that existed.
+  However, when this option is enabled, the query parameters are saved in the browser
+  session storage instead of in a cookie, which helps saving space for long URLs.
 
   Note that request data is stored **unencrypted** in the browser. If your forms may contain
   sensitive data, consider not using this feature. This is why this option is set to `false`
@@ -585,7 +590,11 @@ defmodule Plugoid do
     conn =
       StateSession.store_oidc_request(
         conn,
-        %OIDCRequest{challenge: challenge, initial_request_path: conn.request_path},
+        %OIDCRequest{
+          challenge: challenge,
+          initial_request_path: conn.request_path,
+          initial_request_params: initial_request_params(conn, opts)
+        },
         opts[:max_concurrent_state_session]
         )
 
@@ -615,6 +624,14 @@ defmodule Plugoid do
         _ ->
           opts
       end
+    end
+  end
+
+  defp initial_request_params(conn, opts) do
+    if opts[:preserve_initial_request] do
+      %{}
+    else
+      conn.query_params
     end
   end
 

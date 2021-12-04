@@ -142,7 +142,7 @@ defmodule Plugoid.RedirectURI do
           conn
           |> maybe_execute_token_callback(response, request.challenge, opts)
           |> AuthSession.set_authenticated(request.challenge.issuer, response)
-          |> Phoenix.Controller.redirect(to: request.initial_request_path <> "?redirected")
+          |> Phoenix.Controller.redirect(to: initial_request_path(request, %{redirected: nil}))
 
         {:error, error} ->
           # we compress to the maximum to avoid browser URL length limitations
@@ -152,9 +152,7 @@ defmodule Plugoid.RedirectURI do
             :erlang.term_to_binary(error, compressed: 9)
           )
 
-          redirect_to = request.initial_request_path <> "?oidc_error=" <> error_token
-
-          Phoenix.Controller.redirect(conn, to: redirect_to)
+          Phoenix.Controller.redirect(conn, to: initial_request_path(request, %{oidc_error: error_token}))
       end
     else
       {:error, reason} ->
@@ -162,6 +160,16 @@ defmodule Plugoid.RedirectURI do
         |> Plug.Conn.put_status(:internal_server_error)
         |> Phoenix.Controller.put_view(error_view(conn))
         |> Phoenix.Controller.render(:"500", error: reason)
+    end
+  end
+
+  defp initial_request_path(request, additional_params) do
+    all_params = Map.merge(request.initial_request_params, additional_params)
+
+    if all_params == %{} do
+      request.initial_request_path
+    else
+      request.initial_request_path <> "?" <> Plug.Conn.Query.encode(all_params)
     end
   end
 
