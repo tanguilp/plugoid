@@ -553,11 +553,23 @@ defmodule Plugoid do
     |> Plug.Conn.halt()
   end
 
+  @doc """
+  Triggers authentication by redirecting to the OP
+
+  This function, initially only used internally, can be used to trigger redirect
+  to the OP. This allows more fine control on when to redirect user, or to which
+  OP redirect this user.
+
+  It is recommended to not use it if a plug-based approach can be used instead.
+  For example, you can redirect to a Plugoid-protected route (`/route/auth_with_op1`)
+  to automatically have Plugoid redirect to a specific OP, instead of using this
+  function.
+  """
   @spec authenticate(
     Plug.Conn.t(),
     opts()
   ) :: Plug.Conn.t()
-  defp authenticate(conn, opts) do
+  def authenticate(conn, opts) do
     opts =
       Enum.reduce(
         [:acr_values, :claims, :id_token_hint, :login_hint, :prompt, :redirect_uri,
