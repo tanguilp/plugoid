@@ -70,10 +70,8 @@ Open an IEx shell and type the following command:
 
 
 ```elixir
-iex> MyAppWeb.Router.plugoid_redirect_uri("https://openid-provider.com")
-"https://my_app_url.com/openid_connect_redirect_uri?iss=https://openid-provider.com"
+iex> MyAppWeb.Router.plugoid_redirect_uri()
+"https://my_app_url.com/openid_connect_redirect_uri"
 ```
-
-where `https://openid-provider.com` is the `issuer` value of the OpenID Provider.
 
 The returned value is the redirect URI of your site to be configured at the OpenID Provider.

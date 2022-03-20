@@ -10,8 +10,8 @@ defmodule Plugoid.OIDCRequest do
   ]
 
   @type t :: %__MODULE__{
-    challenge: OIDC.Auth.Challenge.t(),
-    initial_request_path: binary(),
-    initial_request_params: Plug.Conn.query_params()
-  }
+          challenge: OIDC.Auth.Challenge.t(),
+          initial_request_path: binary(),
+          initial_request_params: Plug.Conn.query_params()
+        }
 end

@@ -7,7 +7,7 @@ defmodule Plugoid.MixProject do
       description: "OpenID Connect Plug for Phoenix",
       version: "0.5.1",
       elixir: "~> 1.9",
-      compilers: [:phoenix] ++ Mix.compilers,
+      compilers: [:phoenix] ++ Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       docs: [
         main: "readme",

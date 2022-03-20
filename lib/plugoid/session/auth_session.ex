@@ -11,18 +11,18 @@ defmodule Plugoid.Session.AuthSession do
     defstruct [:sub, :acr, :auth_time_monotonic]
 
     @type t :: %__MODULE__{
-      sub: String.t(),
-      acr: String.t() | nil,
-      auth_time_monotonic: integer()
-    }
+            sub: String.t(),
+            acr: String.t() | nil,
+            auth_time_monotonic: integer()
+          }
   end
 
   @doc false
   @spec set_authenticated(
-    Plug.Conn.t(),
-    issuer :: String.t(),
-    OPResponseSuccess.t()
-  ) :: Plug.Conn.t()
+          Plug.Conn.t(),
+          issuer :: String.t(),
+          OPResponseSuccess.t()
+        ) :: Plug.Conn.t()
   def set_authenticated(conn, issuer, op_response) do
     {cookie_name, cookie_opts, cookie_store, cookie_store_opts} = cookie_config()
 
@@ -133,11 +133,11 @@ defmodule Plugoid.Session.AuthSession do
 
   defp cookie_config() do
     name = Application.get_env(:plugoid, :auth_cookie_name, "plugoid_auth")
-    opts = Application.get_env(:plugoid, :auth_cookie_opts, [extra: "SameSite=Lax"])
-    store =
-      Application.get_env(:plugoid, :auth_cookie_store, :ets) |> Plug.Session.Store.get()
+    opts = Application.get_env(:plugoid, :auth_cookie_opts, extra: "SameSite=Lax")
+    store = Application.get_env(:plugoid, :auth_cookie_store, :ets) |> Plug.Session.Store.get()
+
     store_opts =
-      Application.get_env(:plugoid, :auth_cookie_store_opts, [table: :plugoid_auth_cookie])
+      Application.get_env(:plugoid, :auth_cookie_store_opts, table: :plugoid_auth_cookie)
       |> store.init()
 
     {name, opts, store, store_opts}
