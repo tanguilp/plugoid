@@ -76,9 +76,7 @@ defmodule Plugoid do
   Called only if `:prompt` is not set
   - `:redirect_uri`: the redirect URI the OP has to use for redirect. If not set,
   defaults to
-  `Myapp.Router.Helpers.openid_connect_redirect_uri(Myapp.Endpoint, :call)?iss=<ISS>`
-  where `<ISS>` is replaced by the URL-encoded issuer. This scheme is used to prevent
-  mix-up attacks (see the [Security considerations](#module-security-considerations)).
+  `Myapp.Router.Helpers.openid_connect_redirect_uri(Myapp.Endpoint, :call)`
   It asumes that such a route was installed. See also `Plugoid.RedirectURI` for automatic
   installation of this route and the available
   [helpers](Plugoid.RedirectURI.html#module-determining-the-redirect-uri).
@@ -333,24 +331,6 @@ defmodule Plugoid do
   ```elixir
   config :phoenix, :filter_parameters, ["id_token", "code", "token"]
   ```
-
-  ### Preventing mix-up attacks
-
-  Mix-up attacks consists in using the fact that OpenID Connect responses on the
-  redirect URI are not authenticated, and can therefore originate from anyone. An
-  malicious OP can trick an OpenID Connect RP by convincing it to send him tokens
-  received from another OP. This can happen only when more than one OP is used.
-
-  For further discussion, see
-  [Mix-Up, Revisited](https://danielfett.de/2020/05/04/mix-up-revisited/).
-
-  `Plugoid` is immune to such an attack because it adds the issuer to the redirect URI
-  as a query parameter and verifies that all request query parameters exist in
-  the response from the OP.
-
-  Beware, however, if you manually change the redirect URI using the
-  `:redirect_uri_callback` option.
-
   """
 
   defmodule AuthenticationRequiredError do
@@ -362,6 +342,7 @@ defmodule Plugoid do
   end
 
   alias OIDC.Auth.OPResponseError
+
   alias Plugoid.{
     OIDCRequest,
     Session.AuthSession,
@@ -374,21 +355,21 @@ defmodule Plugoid do
   @type opts :: [opt | OIDC.Auth.challenge_opt()]
 
   @type opt ::
-  {:acr_values_callback, opt_callback()}
-  | {:claims_callback, opt_callback()}
-  | {:error_view, module()}
-  | {:id_token_hint_callback, opt_callback()}
-  | {:login_hint_callback, opt_callback()}
-  | {:max_concurrent_state_session, non_neg_integer() | nil}
-  | {:on_unauthenticated, :auth | :fail | :pass}
-  | {:on_unauthorized, :auth | :fail}
-  | {:prompt_callback, opt_callback()}
-  | {:redirect_uri, String.t()}
-  | {:redirect_uri_callback, opt_callback()}
-  | {:response_mode_callback, opt_callback()}
-  | {:response_type_callback, opt_callback()}
-  | {:server_metadata, OIDC.server_metadata()}
-  | {:session_lifetime, non_neg_integer()}
+          {:acr_values_callback, opt_callback()}
+          | {:claims_callback, opt_callback()}
+          | {:error_view, module()}
+          | {:id_token_hint_callback, opt_callback()}
+          | {:login_hint_callback, opt_callback()}
+          | {:max_concurrent_state_session, non_neg_integer() | nil}
+          | {:on_unauthenticated, :auth | :fail | :pass}
+          | {:on_unauthorized, :auth | :fail}
+          | {:prompt_callback, opt_callback()}
+          | {:redirect_uri, String.t()}
+          | {:redirect_uri_callback, opt_callback()}
+          | {:response_mode_callback, opt_callback()}
+          | {:response_type_callback, opt_callback()}
+          | {:server_metadata, OIDC.server_metadata()}
+          | {:session_lifetime, non_neg_integer()}
 
   @type opt_callback :: (Plug.Conn.t(), opts() -> any())
 
@@ -397,9 +378,9 @@ defmodule Plugoid do
 
   @impl Plug
   def init(opts) do
-    unless opts[:issuer], do: raise "Missing issuer"
-    unless opts[:client_id], do: raise "Missing client_id"
-    unless opts[:client_config], do: raise "Missing client configuration callback"
+    unless opts[:issuer], do: raise("Missing issuer")
+    unless opts[:client_id], do: raise("Missing client_id")
+    unless opts[:client_config], do: raise("Missing client configuration callback")
 
     opts
     |> Keyword.put_new(:id_token_iat_max_time_gap, 30)
@@ -537,10 +518,10 @@ defmodule Plugoid do
   end
 
   @spec respond_unauthorized(
-    Plug.Conn.t(),
-    OPResponseError.t() | Exception.t(),
-    opts()
-  ) :: Plug.Conn.t()
+          Plug.Conn.t(),
+          OPResponseError.t() | Exception.t(),
+          opts()
+        ) :: Plug.Conn.t()
   defp respond_unauthorized(conn, error, opts) do
     conn
     |> Plug.Conn.put_status(:unauthorized)
@@ -571,14 +552,22 @@ defmodule Plugoid do
   function.
   """
   @spec authenticate(
-    Plug.Conn.t(),
-    opts()
-  ) :: Plug.Conn.t()
+          Plug.Conn.t(),
+          opts()
+        ) :: Plug.Conn.t()
   def authenticate(conn, opts) do
     opts =
       Enum.reduce(
-        [:acr_values, :claims, :id_token_hint, :login_hint, :prompt, :redirect_uri,
-         :response_mode, :response_type],
+        [
+          :acr_values,
+          :claims,
+          :id_token_hint,
+          :login_hint,
+          :prompt,
+          :redirect_uri,
+          :response_mode,
+          :response_type
+        ],
         opts,
         &apply_opt_callback(&2, &1, conn)
       )
@@ -596,7 +585,7 @@ defmodule Plugoid do
           initial_request_params: initial_request_params(conn, opts)
         },
         opts[:max_concurrent_state_session]
-        )
+      )
 
     if opts[:preserve_initial_request] do
       conn
@@ -635,34 +624,36 @@ defmodule Plugoid do
     end
   end
 
-  #Returns a response type supported by the OP
-  #In order of preference:
-  #- `"id_token"`: allows authentication in one unique round-trip
-  #- `"code"`: forces client authentication that can be considered an additional
-  #layer of security (when simply redirecting to an URI is not trusted)
-  #- or the first supported response type set in the OP metadata
+  # Returns a response type supported by the OP
+  # In order of preference:
+  # - `"id_token"`: allows authentication in one unique round-trip
+  # - `"code"`: forces client authentication that can be considered an additional
+  # layer of security (when simply redirecting to an URI is not trusted)
+  # - or the first supported response type set in the OP metadata
   @doc false
   @spec response_type(Plug.Conn.t(), opts()) :: String.t()
   def response_type(_conn, opts) do
-    response_types_supported = Utils.server_metadata(opts)["response_types_supported"] ||
-      raise "Unable to retrieve `response_types_supported` from server metadata or configuration"
+    response_types_supported =
+      Utils.server_metadata(opts)["response_types_supported"] ||
+        raise "Unable to retrieve `response_types_supported` from server metadata or configuration"
+
     response_modes_supported = Utils.server_metadata(opts)["response_modes_supported"] || []
 
     cond do
-    "id_token" in response_types_supported and "form_post" in response_modes_supported ->
-      "id_token"
+      "id_token" in response_types_supported and "form_post" in response_modes_supported ->
+        "id_token"
 
-    "code" in response_types_supported ->
-      "code"
+      "code" in response_types_supported ->
+        "code"
 
-    true ->
-      List.first(response_types_supported)
+      true ->
+        List.first(response_types_supported)
     end
   end
 
-  #Returns the response mode from the options
-  #In the implicit and hybrid flows, returns `"form_post"` if supported by the server, `"query"`
-  #otherwise. In the code flow, returns `nil` (the default used by the server is `"query"`).
+  # Returns the response mode from the options
+  # In the implicit and hybrid flows, returns `"form_post"` if supported by the server, `"query"`
+  # otherwise. In the code flow, returns `nil` (the default used by the server is `"query"`).
   @doc false
   @spec response_mode(Plug.Conn.t(), opts()) :: String.t() | nil
   def response_mode(conn, opts) do

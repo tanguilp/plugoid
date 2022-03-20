@@ -40,9 +40,9 @@ defmodule Plugoid.Session.StateSession do
   end
 
   @spec get_and_delete_oidc_request(
-    Plug.Conn.t(),
-    state :: String.t()
-  ) :: {:ok, {Plug.Conn.t(), OIDCRequest.t()}} | {:error, atom()}
+          Plug.Conn.t(),
+          state :: String.t()
+        ) :: {:ok, {Plug.Conn.t(), OIDCRequest.t()}} | {:error, atom()}
   def get_and_delete_oidc_request(conn, state) do
     {base_cookie_name, cookie_opts, cookie_store, cookie_store_opts} = cookie_config()
 
@@ -107,11 +107,12 @@ defmodule Plugoid.Session.StateSession do
 
   defp cookie_config() do
     name = Application.get_env(:plugoid, :state_cookie_name, "plugoid_state")
-    opts = Application.get_env(:plugoid, :state_cookie_opts, [secure: true, extra: "SameSite=None"])
+    opts = Application.get_env(:plugoid, :state_cookie_opts, secure: true, extra: "SameSite=None")
+
     store =
       Application.get_env(:plugoid, :state_cookie_store, :cookie) |> Plug.Session.Store.get()
-    store_opts =
-      Application.get_env(:plugoid, :state_cookie_store_opts, []) |> store.init()
+
+    store_opts = Application.get_env(:plugoid, :state_cookie_store_opts, []) |> store.init()
 
     {name, opts, store, store_opts}
   end

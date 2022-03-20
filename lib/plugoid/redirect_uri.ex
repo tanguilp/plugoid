@@ -15,18 +15,18 @@ defmodule Plugoid.RedirectURI do
 
   ## Determining the redirect URI
 
-  When using `Plugoid.RedirectURI`, an `plugoid_redirect_uri/2` function is automatically
+  When using `Plugoid.RedirectURI`, an `plugoid_redirect_uri/1` function is automatically
   installed in the router. It takes the endpoint as the first parameter and the issuer
   as the second:
 
-      iex> PlugoidDemoWeb.Router.plugoid_redirect_uri(PlugoidDemoWeb.Endpoint, "https://issuer.example.com/auth")
-      "http://localhost:4000/openid_connect_redirect_uri?iss=https://issuer.example.com/auth"
+      iex> PlugoidDemoWeb.Router.plugoid_redirect_uri(PlugoidDemoWeb.Endpoint)
+      "http://localhost:4000/openid_connect_redirect_uri"
 
   It can be called without the endpoint, in which case it is inferred from the router's
   module name:
 
-      iex> PlugoidDemoWeb.Router.plugoid_redirect_uri("https://issuer.example.com/auth")
-      "http://localhost:4000/openid_connect_redirect_uri?iss=https://issuer.example.com/auth"
+      iex> PlugoidDemoWeb.Router.plugoid_redirect_uri()
+      "http://localhost:4000/openid_connect_redirect_uri"
 
   ## Options
 
@@ -50,8 +50,8 @@ defmodule Plugoid.RedirectURI do
     Challenge,
     OPResponseSuccess
   }
+
   alias Plugoid.{
-    OIDCRequest,
     Session.AuthSession,
     Session.StateSession,
     Utils
@@ -59,18 +59,18 @@ defmodule Plugoid.RedirectURI do
 
   @type opts :: [opt() | OIDC.Auth.verify_opt()]
   @type opt ::
-  {:error_view, module()}
-  | {:jti_register, module()}
-  | {:path, String.t()}
-  | {:token_callback, token_callback()}
+          {:error_view, module()}
+          | {:jti_register, module()}
+          | {:path, String.t()}
+          | {:token_callback, token_callback()}
 
-  @type token_callback :: (
-    Plug.Conn.t(),
-    OPResponseSuccess.t(),
-    issuer :: String.t(),
-    client_id :: String.t(),
-    opts()
-    -> Plug.Conn.t())
+  @type token_callback ::
+          (Plug.Conn.t(),
+           OPResponseSuccess.t(),
+           issuer :: String.t(),
+           client_id :: String.t(),
+           opts() ->
+             Plug.Conn.t())
 
   defmodule MissingStateParamaterError do
     defexception message: "state parameter is missing from OP's response"
@@ -82,7 +82,7 @@ defmodule Plugoid.RedirectURI do
 
   defmacro __using__(opts) do
     quote do
-      def plugoid_redirect_uri(endpoint \\ nil, issuer) do
+      def plugoid_redirect_uri(endpoint \\ nil) do
         endpoint =
           if endpoint do
             endpoint
@@ -94,31 +94,31 @@ defmodule Plugoid.RedirectURI do
             |> Module.safe_concat()
           end
 
-        base_redirect_uri =
-          apply(
-            Module.concat(__MODULE__, Helpers),
-            :openid_connect_redirect_uri_url,
-            [endpoint, :call]
-          )
-
-        base_redirect_uri <> "?iss=" <> URI.encode(issuer)
+        apply(
+          Module.concat(__MODULE__, Helpers),
+          :openid_connect_redirect_uri_url,
+          [endpoint, :call]
+        )
       end
 
       pipeline :oidc_redirect_pipeline do
-        plug :accepts, ["html"]
-        plug :fetch_query_params
-        plug Plug.Parsers, parsers: [:urlencoded], pass: ["*/*"]
+        plug(:accepts, ["html"])
+        plug(:fetch_query_params)
+        plug(Plug.Parsers, parsers: [:urlencoded], pass: ["*/*"])
       end
 
       scope unquote(opts[:path]) || "/openid_connect_redirect_uri", Plugoid do
-        pipe_through :oidc_redirect_pipeline
+        pipe_through(:oidc_redirect_pipeline)
 
-        get "/", RedirectURI, :call,
+        get("/", RedirectURI, :call,
           as: :openid_connect_redirect_uri,
           private: %{plugoid: unquote(opts)}
-        post "/", RedirectURI, :call,
+        )
+
+        post("/", RedirectURI, :call,
           as: :openid_connect_redirect_uri,
           private: %{plugoid: unquote(opts)}
+        )
       end
     end
   end
@@ -132,9 +132,7 @@ defmodule Plugoid.RedirectURI do
 
     with {:ok, op_response} <- extract_params(conn),
          %{"state" => state} = op_response,
-         {:ok, {conn, request}} <- StateSession.get_and_delete_oidc_request(conn, state),
-         :ok <- verify_redirect_uri_query_params(conn, request)
-    do
+         {:ok, {conn, request}} <- StateSession.get_and_delete_oidc_request(conn, state) do
       case OIDC.Auth.verify_response(op_response, request.challenge, opts) do
         {:ok, %OPResponseSuccess{} = response} ->
           maybe_register_nonce(response.id_token_claims, opts)
@@ -146,13 +144,16 @@ defmodule Plugoid.RedirectURI do
 
         {:error, error} ->
           # we compress to the maximum to avoid browser URL length limitations
-          error_token = Phoenix.Token.sign(
-            conn,
-            "plugoid error token",
-            :erlang.term_to_binary(error, compressed: 9)
-          )
+          error_token =
+            Phoenix.Token.sign(
+              conn,
+              "plugoid error token",
+              :erlang.term_to_binary(error, compressed: 9)
+            )
 
-          Phoenix.Controller.redirect(conn, to: initial_request_path(request, %{oidc_error: error_token}))
+          Phoenix.Controller.redirect(conn,
+            to: initial_request_path(request, %{oidc_error: error_token})
+          )
       end
     else
       {:error, reason} ->
@@ -191,23 +192,6 @@ defmodule Plugoid.RedirectURI do
     end
   end
 
-  @spec verify_redirect_uri_query_params(
-    Plug.Conn.t(), OIDCRequest.t()
-  ) :: :ok | {:error, Exception.t()}
-  defp verify_redirect_uri_query_params(conn, oidc_request) do
-    req_query_params =
-      URI.parse(oidc_request.challenge.redirect_uri).query
-      |> URI.decode_query()
-      |> MapSet.new()
-    resp_query_params = conn.query_params |> MapSet.new()
-
-    if MapSet.subset?(req_query_params, resp_query_params) do
-      :ok
-    else
-      {:error, %MissingRedirectQueryParamError{}}
-    end
-  end
-
   @spec error_view(Plug.Conn.t()) :: module()
   defp error_view(conn),
     do: conn.private[:plugoid][:error_view] || Utils.error_view_from_conn(conn)
@@ -228,11 +212,11 @@ defmodule Plugoid.RedirectURI do
   end
 
   @spec maybe_execute_token_callback(
-    Plug.Conn.t(),
-    OPResponseSuccess.t(),
-    Challenge.t(),
-    opts()
-  ) :: Plug.Conn.t()
+          Plug.Conn.t(),
+          OPResponseSuccess.t(),
+          Challenge.t(),
+          opts()
+        ) :: Plug.Conn.t()
   defp maybe_execute_token_callback(conn, response, challenge, opts) do
     if opts[:token_callback] do
       opts[:token_callback].(
