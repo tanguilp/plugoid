@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project adheres to Semantic Versioning.
 
+## [0.5.1] - 2022-03-20
+
+### Added
+
+- [`Plugoid`] `Plugoid.authenticate/2` is now public
+
+### Changed
+
+- [`Plugoid`] GET request parameters are now stored in a cookie unless `:preserve_initial_request'
+is set to `true`, in which case it is sotred in local storage in the browser
+
 ## [0.5.0] - 2021-11-16
 
 ### Changed
