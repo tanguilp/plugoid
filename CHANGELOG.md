@@ -12,7 +12,7 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 
 ### Changed
 
-- [`Plugoid`] GET request parameters are now stored in a cookie unless `:preserve_initial_request'
+- [`Plugoid`] GET request parameters are now stored in a cookie unless `:preserve_initial_request`
 is set to `true`, in which case it is sotred in local storage in the browser
 
 ## [0.5.0] - 2021-11-16
